@@ -30,7 +30,7 @@ enum Punct : int {
     LPAR      , RPAR   ,
     LBRAC     , RBRAC  ,
 
-    QUESTION  , COLON  , TILDE ,
+    QUESTION  , COLON  , TILDE  ,
     SEMICOLON , COMMA  , DOLLAR ,
 };
 
@@ -148,12 +148,12 @@ String String::unescape(String s) {
     String ret;
     map<char, char> escapes {
         { 'v', '\v' },
-            { 'f', '\f' },
-            { 'r', '\r' },
-            { 'n', '\n' },
-            { 't', '\t' },
-            { '"', '"' },
-            { '\\', '\\' },
+        { 'f', '\f' },
+        { 'r', '\r' },
+        { 'n', '\n' },
+        { 't', '\t' },
+        { '"', '"' },
+        { '\\', '\\' },
     };
 
     for (size_t i = 0; s[i]; i++) {
@@ -172,7 +172,7 @@ String String::unescape(String s) {
         else {
             auto fromhex = [](auto old, auto c) {
                 auto val = old << 4;
-                if (c >= '0' && c <= '9') val |= c - '0';
+                     if (c >= '0' && c <= '9') val |= c - '0';
                 else if (c >= 'a' && c <= 'f') val |= c - 'a';
                 else                           val |= c - 'A';
                 return val;
