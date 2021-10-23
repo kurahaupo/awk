@@ -29,7 +29,7 @@ enum Punct {
     LBRAC     , RBRAC  ,
 
     QUESTION  , COLON  , TILDE ,
-    COMMA     , DOLLAR ,
+    SEMICOLON , COMMA  , DOLLAR ,
 };
 
 map<Punct, string> punctstringmap = {
@@ -53,7 +53,7 @@ map<Punct, string> punctstringmap = {
     { LBRAC     , "{"  }, { RBRAC  , "}"  },
                                      
     { QUESTION  , "?"  }, { COLON  , ":"  }, { TILDE , "~" },
-    { COMMA     , ","  }, { DOLLAR , "$"  },
+    { SEMICOLON , ";"  }, { COMMA  , ","  }, { DOLLAR, "$" },
 };
 
 map<string, Punct> stringpunctmap = {
@@ -77,7 +77,7 @@ map<string, Punct> stringpunctmap = {
     { "{" , LBRAC      }, { "}" , RBRAC   },              
                                                           
     { "?" , QUESTION   }, { ":" , COLON   }, { "~", TILDE  },
-    { "," , COMMA      }, { "$" , DOLLAR  },
+    { ";" , SEMICOLON  }, { "," , COMMA   }, { "$", DOLLAR },
 };
 
 enum Keyword {
@@ -155,64 +155,58 @@ struct String     : string {
         };
 
         for (size_t i = 0; s[i]; i++) {
+            // not escaped
             if (s[i] != '\\') {
                 ret += s[i];
-                continue;
             }
-            if (escapes.find(s[i+1]) != escapes.end()) {
+
+            // simple escape
+            else if (escapes.find(s[i+1]) != escapes.end()) {
                 ret += escapes[s[i+1]];
                 i++;
-                continue;
             }
-            if (s[i+1] == 'x') {
-                if (!isxdigit(s[i+2]))
-                    throw std::logic_error(string{"this doesn't look like hex? <"}.append(s, i).append(">"));
-                i += 2;
 
-                auto fromhex = [](char c) {
-                    if (c >= '0' && c <= '9')
-                        return c - '0';
-                    if (c >= 'a' && c <= 'f')
-                        return c - 'a';
-                    return c - 'A';
+            // hex oct
+            else {
+                auto fromhex = [](auto old, auto c) {
+                    auto val = old << 4;
+                         if (c >= '0' && c <= '9') val |= c - '0';
+                    else if (c >= 'a' && c <= 'f') val |= c - 'a';
+                    else                           val |= c - 'A';
+                    return val;
+                };
+                auto fromoct = [](auto old, auto c) { return (old << 3) | (c - '0'); };
+
+                auto isoctdigit = [](auto c) { return c >= '0' && c <= '7'; };
+
+                auto convert = [&](auto acceptingfunc, auto conversionfunc, auto maxchars) {
+                    unsigned char c = 0;
+
+                    auto q = 0;
+                    for ( ; q < maxchars; q++) {
+                        if (acceptingfunc(s[i])) {
+                            c = conversionfunc(c, s[i++]);
+                        }
+                        else break;
+                    }
+                    if (q == 0)
+                        throw std::logic_error(string{"this doesn't look like a number? <"}.append(s, i).append(">"));
+
+                    // next unparsed char is at i
+                    i--;
+
+                    return static_cast<char>(c);
                 };
 
-                unsigned char c = fromhex(s[i]);
-                if (!isxdigit(s[i+1])) {
-                    ret += static_cast<char>(c);
-                    continue;
+                i++;
+                if (s[i] == 'x') {
+                    i++;
+                    ret += convert(isxdigit, fromhex, 2);
                 }
-
-                i++;
-                c <<= 4;
-                c |= fromhex(s[i]);
-                ret += static_cast<char>(c);
-            }
-
-            auto isoctal = [](char c) { return c >= '0' && c <= '7'; };
-            if (isoctal(s[i+1])) {
-                i++;
-
-                auto fromoct = [](char c) { return c - '0'; };
-
-                unsigned char c = fromoct(s[i]);
-                if (!isoctal(s[i+1])) {
-                    ret += static_cast<char>(c);
-                    continue;
-                }
-                i++;
-                c <<= 3;
-                c |= fromoct(s[i]);
-
-                if (!isoctal(s[i+1])) {
-                    ret += static_cast<char>(c);
-                    continue;
-                }
-
-                i++;
-                c <<= 3;
-                c |= fromoct(s[i]);
-                ret += static_cast<char>(c);
+                else if (isoctdigit(s[i]))
+                    ret += convert(isoctdigit, fromoct, 3);
+                else
+                    throw std::logic_error(string{"unknown backslash sequence? <"}.append(s, i).append(">"));
             }
         }
 
@@ -232,14 +226,13 @@ std::vector<Token> tokenise(const string& s) {
         if (isspace(s[i]))
             continue;
 
-        if (s[i] == '#') {
+        else if (s[i] == '#') {
             while (s[i] && s[i] != '\n')
                 i++;
-            continue;
         }
 
         // identifier/keyword
-        if (isalpha(s[i])) {
+        else if (isalpha(s[i])) {
             while (isalnum(s[i+1]))
                 i++;
 
@@ -319,5 +312,10 @@ int main(int argc, char *argv[]) {
     if (argc > 1) {
         auto v = tokenise(argv[1]);
         dumpvec(v);
+    }
+    else {
+        dumpvec(tokenise("$1    >     8 { print \"foobar\\x4x1baz\" }"));
+        dumpvec(tokenise("\"ppp\\\".qqq \\x3007 \\06007\""));
+        dumpvec(tokenise("function f() { while (1) break; meow moo }"));
     }
 }
