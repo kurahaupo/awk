@@ -6,7 +6,7 @@
 #include <iostream>
 #include <cstring>
 
-using std::vector, std::string;
+using std::vector, std::string, std::map;
 
 enum Punct {
     PLUSPLUS  , PLUSEQ , PLUS  ,
@@ -32,7 +32,7 @@ enum Punct {
     COMMA     , DOLLAR ,
 };
 
-std::map<Punct, string> punctstringmap = {
+map<Punct, string> punctstringmap = {
     { PLUSPLUS  , "++" }, { PLUSEQ , "+=" }, { PLUS  , "+" },
     { MINUSMINUS, "--" }, { MINUSEQ, "-=" }, { MINUS , "-" },
     { TIMESTIMES, "**" }, { TIMESEQ, "*=" }, { TIMES , "*" },
@@ -56,7 +56,7 @@ std::map<Punct, string> punctstringmap = {
     { COMMA     , ","  }, { DOLLAR , "$"  },
 };
 
-std::map<string, Punct> stringpunctmap = {
+map<string, Punct> stringpunctmap = {
     { "++", PLUSPLUS   }, { "+=", PLUSEQ  }, { "+", PLUS   },
     { "--", MINUSMINUS }, { "-=", MINUSEQ }, { "-", MINUS  },
     { "**", TIMESTIMES }, { "*=", TIMESEQ }, { "*", TIMES  },
@@ -98,7 +98,7 @@ enum Keyword {
     PRINT, PRINTF,
 };
 
-std::map<string, Keyword> keywordstringmap = {
+map<string, Keyword> keywordstringmap = {
     { "BEGIN"   , BEGIN    }, { "END"     , END      },
 
     { "break"   , BREAK    }, { "continue", CONTINUE },
@@ -117,7 +117,7 @@ std::map<string, Keyword> keywordstringmap = {
     { "print"   , PRINT    }, { "printf"  , PRINTF   },
 };
 
-std::map<Keyword, string> stringkeywordmap = {
+map<Keyword, string> stringkeywordmap = {
     { BEGIN   , "BEGIN"    }, { END     , "END"      },
                                                     
     { BREAK   , "break"    }, { CONTINUE, "continue" },
@@ -139,7 +139,60 @@ std::map<Keyword, string> stringkeywordmap = {
 using Number = double; // maybe bignums in the future?
 struct Identifier : string { using string::string; };
 struct Regex      : string { using string::string; };
-struct String     : string { using string::string; };
+struct String     : string {
+    using string::string;
+
+    static String unescape(String s) {
+        String ret;
+        map<char, char> escapes {
+            { 'v', '\v' },
+            { 'f', '\f' },
+            { 'r', '\r' },
+            { 'n', '\n' },
+            { 't', '\t' },
+            { '"', '"' },
+            { '\\', '\\' },
+        };
+
+        for (size_t i = 0; s[i]; i++) {
+            if (s[i] != '\\') {
+                ret += s[i];
+                continue;
+            }
+            if (escapes.find(s[i+1]) != escapes.end()) {
+                ret += escapes[s[i+1]];
+                i++;
+                continue;
+            }
+            if (s[i+1] == 'x') {
+                if (!isxdigit(s[i+2]))
+                    throw std::logic_error(string{"this doesn't look like hex? <"}.append(s, i).append(">"));
+                i += 2;
+
+                auto fromhex = [](char c) {
+                    if (c >= '0' && c <= '9')
+                        return c - '0';
+                    if (c >= 'a' && c <= 'f')
+                        return c - 'a';
+                    return c - 'A';
+                };
+
+                unsigned char c = fromhex(s[i]);
+                if (!isxdigit(s[i+1])) {
+                    ret += static_cast<char>(c);
+                    continue;
+                }
+
+                i++;
+                c <<= 4;
+                c |= fromhex(s[i]);
+                ret += static_cast<char>(c);
+            }
+        }
+
+        return ret;
+    }
+};
 
 using Token = std::variant<Identifier, Keyword, Number, String, Regex, Punct>;
 
@@ -186,7 +239,7 @@ std::vector<Token> tokenise(const string& s) {
                     i++;
             i++;
             if (s[i] == '"')
-                tok = String{ s.begin() + start, s.begin() + i + 1 };
+                tok = String::unescape(String{ s.begin() + start + 1, s.begin() + i });
             else
                 throw std::logic_error(string{"unterminated string? <"}.append(s, start).append(">"));
         }
