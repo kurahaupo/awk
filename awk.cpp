@@ -188,6 +188,32 @@ struct String     : string {
                 c |= fromhex(s[i]);
                 ret += static_cast<char>(c);
             }
+
+            auto isoctal = [](char c) { return c >= '0' && c <= '7'; };
+            if (isoctal(s[i+1])) {
+                i++;
+
+                auto fromoct = [](char c) { return c - '0'; };
+
+                unsigned char c = fromoct(s[i]);
+                if (!isoctal(s[i+1])) {
+                    ret += static_cast<char>(c);
+                    continue;
+                }
+                i++;
+                c <<= 3;
+                c |= fromoct(s[i]);
+
+                if (!isoctal(s[i+1])) {
+                    ret += static_cast<char>(c);
+                    continue;
+                }
+
+                i++;
+                c <<= 3;
+                c |= fromoct(s[i]);
+                ret += static_cast<char>(c);
+            }
         }
 
         return ret;
