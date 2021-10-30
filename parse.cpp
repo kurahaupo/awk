@@ -163,61 +163,79 @@ String String::unescape(String s) {
         { '\\', '\\' },
     };
 
-    for (size_t i = 0; s[i]; i++) {
+    for (size_t i = 0; i < s.length(); i++) {
         // not escaped
         if (s[i] != '\\') {
             ret += s[i];
+            continue;
         }
+
+        i++;
+        if (i == s.length())
+            throw parse_error{"backslash not allowed at end of string"};    // TODO: handle line continuation
 
         // simple escape
-        else if (escapes.find(s[i+1]) != escapes.end()) {
-            ret += escapes[s[i+1]];
-            i++;
+        if (escapes.find(s[i]) != escapes.end()) {
+            ret += escapes[s[i]];
+            continue;
         }
 
-        // hex oct
-        else {
-            auto fromhex = [](auto old, auto c) {
-                auto val = old << 4;
-                     if (c >= '0' && c <= '9') val |= c - '0';
-                else if (c >= 'a' && c <= 'f') val |= c - 'a' + 10;
-                else                           val |= c - 'A' + 10;
-                return val;
-            };
-            auto fromoct = [](auto old, auto c) { return (old << 3) | (c - '0'); };
-
-            auto isoctdigit = [](auto c) { return c >= '0' && c <= '7'; };
-
-            auto convert = [&](auto acceptingfunc, auto conversionfunc, auto maxchars) {
-                unsigned char c = 0;
-
-                auto q = 0;
-                for ( ; q < maxchars; q++) {
-                    if (acceptingfunc(s[i])) {
-                        c = conversionfunc(c, s[i++]);
-                    }
-                    else break;
-                }
-                if (q == 0)
-                    throw parse_error{"this doesn't look like a number?", s, i};
-
-                // next unparsed char is at i
-                i--;
-
-                return static_cast<char>(c);
-            };
-
-            i++;
-            if (s[i] == 'x') {
-                i++;
-                ret += convert(isxdigit, fromhex, 2);
-            }
-            else if (isoctdigit(s[i]))
-                ret += convert(isoctdigit, fromoct, 3);
-            else
-                throw parse_error{"unknown backslash sequence?", s, i};
+        template <T, U> T convert (auto conversionfunc, auto maxchars, auto& s, auto& i) {
+            U c = 0;
+            if (!conversionfunc(c, s[i]))
+                    throw parse_error{"this doesn't look like a number?", s.substr(i)};
+            for (auto q = 1 ; q < maxchars && conversionfunc(c, s[++i]); q++) {}
+            return c;
         }
-    }
+
+        auto conv_hex = [](auto& a, auto c) {
+                auto r = a;                             // important that r have the same type as acc.
+                r <<= 4;
+                if (r >> 4 != a) return false;          // result won't fit
+                if (!isxdigit(c)) return false;
+                     if (islower(c)) c -= 'a'-10;
+                else if (isupper(c)) c -= 'A'-10;
+                else c -= '0';
+                a = r | c;
+                return true;
+            };
+
+        if (s[i] == 'x') {
+            i++;
+            ret += convert<char, uint8_t>(conv_hex, 2, s, i);
+            continue;
+        }
+        
+        
+        if (s[i] == 'u') {
+            ++i;
+            auto x = convert<int32_t, uint16_t>(conv_hex, 4, s, i);
+            ret += wchar2utf8(x);
+            continue;
+        }
+        if (s[i] == 'U') {
+            ++i;
+            auto x = convert<int32_t, uint32_t>(conv_hex, 8, s, i);
+            ret += wchar2utf8(x);
+            continue;
+        }
+        
+        auto conv_oct = [](auto& a, auto c) {           // will throw if first is not octal digit
+                    auto r = a;
+                    r <<= 3;
+                    if (r >> 3 != a) return false;      // result won't fit
+                    if (!isdigit(c)) return false;      // not a digit
+                    if (c > '7') return false;          // not an octal digit
+                    a = r | c - '0';
+                    return true;
+                };
+
+        if (isdigit(s[i])) {
+            ret += convert<char, uint8_t>(conv_oct, 3, s, i);
+            continue;
+        }
+                throw parse_error{"unknown backslash sequence?", s.substr(i)};
+        }
 
     return ret;
 }
@@ -279,7 +297,7 @@ std::vector<Token> lex(const string& s) {
                     goto punctok;
                 }
             }
-            throw parse_error{"wtf is this?", s, start};
+            throw parse_error{"wtf is this?", s.substr(start)};
             punctok: ;
         }
 
