@@ -1,6 +1,6 @@
 #include <vector>
 #include "types.hpp"
-#include "lex.hpp"
+#include "parse.hpp"
 
 int main(int argc, char *argv[]) {
     if (argc > 1) {

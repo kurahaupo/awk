@@ -13,8 +13,8 @@ using std::vector, std::string, std::map;
 enum Punct : int {
     PLUSPLUS  , PLUSEQ , PLUS  ,
     MINUSMINUS, MINUSEQ, MINUS ,
-    TIMESTIMES, TIMESEQ, TIMES ,
-    DIVDIV    , DIVEQ  , DIV   ,
+                TIMESEQ, TIMES ,
+                DIVEQ  , DIV   ,
                 PERCEQ , PERC  ,
 
     ANDAND    , ANDEQ  , AND   ,
@@ -35,11 +35,12 @@ enum Punct : int {
 };
 
 namespace {
+
 map<Punct, string> punctstringmap = {
     { PLUSPLUS  , "++" }, { PLUSEQ , "+=" }, { PLUS  , "+" },
     { MINUSMINUS, "--" }, { MINUSEQ, "-=" }, { MINUS , "-" },
-    { TIMESTIMES, "**" }, { TIMESEQ, "*=" }, { TIMES , "*" },
-    { DIVDIV    , "//" }, { DIVEQ  , "/=" }, { DIV   , "/" },
+                          { TIMESEQ, "*=" }, { TIMES , "*" },
+                          { DIVEQ  , "/=" }, { DIV   , "/" },
                           { PERCEQ , "%=" }, { PERC  , "%" },
                                                            
     { ANDAND    , "&&" }, { ANDEQ  , "&=" }, { AND   , "&" },
@@ -62,8 +63,8 @@ map<Punct, string> punctstringmap = {
 map<string, Punct> stringpunctmap = {
     { "++", PLUSPLUS   }, { "+=", PLUSEQ  }, { "+", PLUS   },
     { "--", MINUSMINUS }, { "-=", MINUSEQ }, { "-", MINUS  },
-    { "**", TIMESTIMES }, { "*=", TIMESEQ }, { "*", TIMES  },
-    { "//", DIVDIV     }, { "/=", DIVEQ   }, { "/", DIV    },
+                          { "*=", TIMESEQ }, { "*", TIMES  },
+                          { "/=", DIVEQ   }, { "/", DIV    },
                           { "%=", PERCEQ  }, { "%", PERC   },
                                                            
     { "&&", ANDAND     }, { "&=", ANDEQ   }, { "&", AND    },
@@ -142,7 +143,7 @@ map<Keyword, string> stringkeywordmap = {
     { PRINT   , "print"    }, { PRINTF  , "printf"   },
 };
 
-};
+}; // namespace
 
 String String::unescape(String s) {
     String ret;
