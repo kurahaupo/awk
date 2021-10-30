@@ -173,8 +173,8 @@ String String::unescape(String s) {
             auto fromhex = [](auto old, auto c) {
                 auto val = old << 4;
                      if (c >= '0' && c <= '9') val |= c - '0';
-                else if (c >= 'a' && c <= 'f') val |= c - 'a';
-                else                           val |= c - 'A';
+                else if (c >= 'a' && c <= 'f') val |= c - 'a' + 10;
+                else                           val |= c - 'A' + 10;
                 return val;
             };
             auto fromoct = [](auto old, auto c) { return (old << 3) | (c - '0'); };
