@@ -6,5 +6,5 @@ awk: awk.o parse.o
 	$(CXX) $^ $(LDFLAGS) -o $@
 
 clean:
-	rm -f *.o awk
+	$(RM) *.o awk
 .PHONY: clean
