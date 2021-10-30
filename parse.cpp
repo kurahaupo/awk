@@ -8,6 +8,12 @@
 #include <iostream>
 #include <cstring>
 
+struct parse_error : std::logic_error {
+    parse_error(std::string description, std::string problem,
+                size_t pos = 0, size_t count = std::string::npos) :
+        std::logic_error(description + " <" + problem.substr(pos, count) + ">") {}
+};
+
 using std::vector, std::string, std::map;
 
 enum Punct : int {
@@ -193,7 +199,7 @@ String String::unescape(String s) {
                     else break;
                 }
                 if (q == 0)
-                    throw std::logic_error(string{"this doesn't look like a number? <"}.append(s, i).append(">"));
+                    throw parse_error{"this doesn't look like a number?", s, i};
 
                 // next unparsed char is at i
                 i--;
@@ -209,7 +215,7 @@ String String::unescape(String s) {
             else if (isoctdigit(s[i]))
                 ret += convert(isoctdigit, fromoct, 3);
             else
-                throw std::logic_error(string{"unknown backslash sequence? <"}.append(s, i).append(">"));
+                throw parse_error{"unknown backslash sequence?", s, i};
         }
     }
 
@@ -260,7 +266,7 @@ std::vector<Token> lex(const string& s) {
             if (s[i] == '"')
                 tok = String::unescape(String{ s.begin() + start + 1, s.begin() + i });
             else
-                throw std::logic_error(string{"unterminated string? <"}.append(s, start).append(">"));
+                throw parse_error{"unterminated string?", s, start};
         }
 
         // how the hell do you tell that a regex is not a division?
@@ -273,7 +279,7 @@ std::vector<Token> lex(const string& s) {
                     goto punctok;
                 }
             }
-            throw std::logic_error(string{"wtf is this? <"}.append(s, start).append(">"));
+            throw parse_error{"wtf is this?", s, start};
             punctok: ;
         }
 
@@ -289,7 +295,7 @@ void dumptokens(const std::vector<Token>& tokens) {
     std::cout << '[';
     std::vector<string> formats {
         // maybe something else in the future
-        "\x1b[31m", 
+        "\x1b[31m",
         "\x1b[32m",
         "\x1b[33m",
         "\x1b[34m",
