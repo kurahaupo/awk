@@ -1,13 +1,22 @@
-CXX = clang++
-CXXFLAGS = -std=c++20 -Wall -Wextra -fsanitize=address -ggdb3
-LDFLAGS = -fsanitize=address
+CXX ?= clang++
+CXXFLAGS += -std=c++20 -Wall -Wextra -fsanitize=address -ggdb3 -MMD -MP
+LDFLAGS += -fsanitize=address
 
-# this should be able to use the implicit rule but make tries to call
-# cc awk.o parse.o -o awk
-# which fails with ugly link errors
-awk: awk.o parse.o # headers?
-	$(CXX) $^ $(LDFLAGS) -o $@
+OBJ := awk.o parse.o
+
+all: awk compile_flags.txt
+
+awk: $(OBJ)
+	$(CXX) $(LDFLAGS) $(TARGET_ARCH) $^ $(LDLIBS) -o $@
+
+$(OBJ): Makefile
+
+compile_flags.txt: Makefile
+	printf "%s\n" $(CXXFLAGS) >$@
 
 clean:
-	rm -f *.o awk
+	$(RM) *.o *.d awk compile_flags.txt
+
+-include $(OBJ:.o=.d)
+
 .PHONY: clean

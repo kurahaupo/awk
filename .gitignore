@@ -1,0 +1,4 @@
+awk
+*.d
+*.o
+compile_flags.txt
